@@ -1,6 +1,6 @@
 {
   "name": "overly-simple-xml-parser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A very simple way to turn xml into js objects",
   "main": "index.js",
   "repository": "https://github.com/zacnomore/overly-simple-xml-parser",
