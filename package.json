@@ -2,7 +2,7 @@
   "name": "overly-simple-xml-parser",
   "version": "0.1.1",
   "description": "A very simple way to turn xml into js objects",
-  "main": "index.js",
+  "main": "dist/parser.min.js",
   "repository": "https://github.com/zacnomore/overly-simple-xml-parser",
   "author": "Zachary Svoboda",
   "scripts": {
@@ -15,5 +15,8 @@
     "webpack": "^4.43.0",
     "webpack-cli": "^3.3.12"
   },
+  "files": [
+    "dist/parser.min.js"
+  ],
   "homepage": "https://github.com/zacnomore/overly-simple-xml-parser"
 }
