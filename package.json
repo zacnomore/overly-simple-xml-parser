@@ -5,5 +5,14 @@
   "main": "index.js",
   "repository": "https://github.com/zacnomore/overly-simple-xml-parser",
   "author": "Zachary Svoboda",
-  "license": "MIT"
+  "scripts": {
+    "build": "webpack"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "ts-loader": "^8.0.1",
+    "typescript": "^3.9.7",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.12"
+  }
 }

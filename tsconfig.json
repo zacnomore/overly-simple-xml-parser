@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "module": "ES6",
+    "target": "ES5",
+    "outDir": "./dist/",
     // "strict": true,
     "removeComments": true,
     "preserveConstEnums": true,
