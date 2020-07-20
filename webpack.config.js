@@ -17,5 +17,6 @@ module.exports = {
   output: {
     filename: 'parser.min.js',
     path: path.resolve(__dirname, 'dist'),
+    library: 'overly-simple-xml-parser'
   },
 };
