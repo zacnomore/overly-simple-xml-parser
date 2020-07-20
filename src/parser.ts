@@ -1,27 +1,4 @@
-export function parse(xmlData: string, options) {
-    options = buildOptions(options, defaultOptions, props);
-    const traversableObj = getTraversalObj(xmlData, options);
-    return convertToJson(traversableObj, options);
-  }
-  
-function buildOptions(options, defaultOptions, props) {
-  var newOptions = {};
-  if (!options) {
-    return defaultOptions; //if there are not options
-  }
-
-  for (let i = 0; i < props.length; i++) {
-    if (options[props[i]] !== undefined) {
-      newOptions[props[i]] = options[props[i]];
-    } else {
-      newOptions[props[i]] = defaultOptions[props[i]];
-    }
-  }
-  return newOptions;
-}
-
-
-function convertToJson(node, options) {
+export function convertToJson(node, options) {
   const jObj = {};
 
   //when no child node or attr is present
@@ -91,9 +68,33 @@ function merge(target, a, arrayMode) {
   }
 }
 
-function getTraversalObj(xmlData, options) {
+
+export function getTraversalObj(xmlData) {
+  const options = {
+    attributeNamePrefix: '@_',
+    attrNodeName: false,
+    textNodeName: '#text',
+    ignoreAttributes: true,
+    ignoreNameSpace: false,
+    allowBooleanAttributes: false, //a tag can have attributes without any value
+    //ignoreRootElement : false,
+    parseNodeValue: true,
+    parseAttributeValue: false,
+    arrayMode: false,
+    trimValues: true, //Trim string values of tag and attributes
+    cdataTagName: false,
+    cdataPositionChar: '\\c',
+    // eslint-disable-next-line no-unused-vars
+    tagValueProcessor: function(a, tagName) {
+      return a;
+    },
+    // eslint-disable-next-line no-unused-vars
+    attrValueProcessor: function(a, attrName) {
+      return a;
+    }
+  };
+
   xmlData = xmlData.replace(/(\r\n)|\n/, " ");
-  options = buildOptions(options, defaultOptions, props);
   const xmlObj = new xmlNode('!xml', undefined, undefined);
   let currentNode = xmlObj;
   let textData = "";
@@ -119,12 +120,6 @@ function getTraversalObj(xmlData, options) {
           }else{
             currentNode.val = processTagValue(tagName, textData , options);
           }
-        }
-
-        if (options.stopNodes.length && options.stopNodes.includes(currentNode.tagname)) {
-          currentNode.child = []
-          if (currentNode.attrsMap == undefined) { currentNode.attrsMap = {}}
-          currentNode.val = xmlData.substr(currentNode.startIndex + 1, i - currentNode.startIndex - 1)
         }
         currentNode = currentNode.parent;
         textData = "";
@@ -210,9 +205,6 @@ function getTraversalObj(xmlData, options) {
         }else{//opening tag
 
           const childNode = new xmlNode( tagName, currentNode, undefined);
-          if (options.stopNodes.length && options.stopNodes.includes(childNode.tagname)) {
-            childNode.startIndex=closeIndex;
-          }
           if(tagName !== tagExp){
             childNode.attrsMap = buildAttributesMap(tagExp, options);
           }
@@ -394,50 +386,3 @@ function resolveNameSpace(tagname, options) {
   }
   return tagname;
 }
-
-const defaultOptions = {
-  attributeNamePrefix: '@_',
-  attrNodeName: false,
-  textNodeName: '#text',
-  ignoreAttributes: true,
-  ignoreNameSpace: false,
-  allowBooleanAttributes: false, //a tag can have attributes without any value
-  //ignoreRootElement : false,
-  parseNodeValue: true,
-  parseAttributeValue: false,
-  arrayMode: false,
-  trimValues: true, //Trim string values of tag and attributes
-  cdataTagName: false,
-  cdataPositionChar: '\\c',
-  // eslint-disable-next-line no-unused-vars
-  tagValueProcessor: function(a, tagName) {
-    return a;
-  },
-  // eslint-disable-next-line no-unused-vars
-  attrValueProcessor: function(a, attrName) {
-    return a;
-  },
-  stopNodes: []
-  //decodeStrict: false,
-};
-
-
-const props = [
-  'attributeNamePrefix',
-  'attrNodeName',
-  'textNodeName',
-  'ignoreAttributes',
-  'ignoreNameSpace',
-  'allowBooleanAttributes',
-  'parseNodeValue',
-  'parseAttributeValue',
-  'arrayMode',
-  'trimValues',
-  'cdataTagName',
-  'cdataPositionChar',
-  'tagValueProcessor',
-  'attrValueProcessor',
-  'parseTrueNumberOnly',
-  'stopNodes'
-];
-  
