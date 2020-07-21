@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-  entry: './src/index.ts',
+  entry: './src/parser.ts',
   module: {
     rules: [
       {
@@ -15,8 +15,8 @@ module.exports = {
     extensions: [ '.tsx', '.ts', '.js' ],
   },
   output: {
-    filename: 'parser.min.js',
+    filename: 'parser.js',
     path: path.resolve(__dirname, 'dist'),
-    library: 'overly-simple-xml-parser'
+    library: 'overlysimplexmlparser'
   },
 };

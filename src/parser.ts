@@ -1,6 +1,11 @@
 import { IOptions } from "./models";
 
-export function convertToJson(node, options: IOptions) {
+export function parse(xmlData: string, options?: IOptions) {
+  const traversableObj = getTraversalObj(xmlData);
+  return convertToJson(traversableObj, options);
+}
+
+export function convertToJson(node, options: IOptions = {}) {
   const jObj = {};
 
   const isEmptyObject = (obj) => Object.keys(obj).length === 0;
