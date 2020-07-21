@@ -1,6 +1,9 @@
-export function convertToJson(node, options) {
+import { IOptions } from "./models";
+
+export function convertToJson(node, options: IOptions) {
   const jObj = {};
 
+  const isEmptyObject = (obj) => Object.keys(obj).length === 0;
   //when no child node or attr is present
   if ((!node.child || isEmptyObject(node.child)) && (!node.attrsMap || isEmptyObject(node.attrsMap))) {
     return isExist(node.val) ? node.val : '';
@@ -8,79 +11,52 @@ export function convertToJson(node, options) {
     //otherwise create a textnode if node has some text
     if (isExist(node.val)) {
       if (!(typeof node.val === 'string' && (node.val === '' || node.val === options.cdataPositionChar))) {
-        if(options.arrayMode === "strict"){
-          jObj[options.textNodeName] = [ node.val ];
-        }else{
-          jObj[options.textNodeName] = node.val;
-        }
+        jObj['#text'] = node.val;
       }
     }
   }
 
-  merge(jObj, node.attrsMap, options.arrayMode);
+  // Switch to object.asign
+  merge(jObj, node.attrsMap);
 
-  const keys = Object.keys(node.child);
-  for (let index = 0; index < keys.length; index++) {
-    var tagname = keys[index];
-    if (node.child[tagname] && node.child[tagname].length > 1) {
-      jObj[tagname] = [];
-      for (var tag in node.child[tagname]) {
-        jObj[tagname].push(convertToJson(node.child[tagname][tag], options));
+  Object.keys(node.child).forEach((key, index) => {
+    if (node.child[key] && node.child[key].length > 1) {
+      jObj[key] = [];
+      for (var tag in node.child[key]) {
+        jObj[key].push(convertToJson(node.child[key][tag], options));
       }
     } else {
-      if(options.arrayMode === true){
-        const result = convertToJson(node.child[tagname][0], options)
-        if(typeof result === 'object')
-          jObj[tagname] = [ result ];
-        else
-          jObj[tagname] = result;
-      }else if(options.arrayMode === "strict"){
-        jObj[tagname] = [convertToJson(node.child[tagname][0], options) ];
-      }else{
-        jObj[tagname] = convertToJson(node.child[tagname][0], options);
-      }
+      jObj[key] = convertToJson(node.child[key][0], options);
     }
-  }
+  });
 
   //add value
   return jObj;
 }
 
- function isEmptyObject(obj) {
-  return Object.keys(obj).length === 0;
- }
-
  function isExist(v) {
   return typeof v !== 'undefined';
 }
 
-function merge(target, a, arrayMode) {
-  if (a) {
-    const keys = Object.keys(a); // will return an array of own properties
+function merge(target: {}, source) {
+  if (source) {
+    const keys = Object.keys(source); // will return an array of own properties
     const len = keys.length; //don't make it inline
     for (let i = 0; i < len; i++) {
-      if(arrayMode === 'strict'){
-        target[keys[i]] = [ a[keys[i]] ];
-      }else{
-        target[keys[i]] = a[keys[i]];
-      }
+      target[keys[i]] = source[keys[i]];
     }
   }
 }
 
 
-export function getTraversalObj(xmlData) {
-  const options = {
-    attributeNamePrefix: '@_',
+export function getTraversalObj(xmlData: string) {
+  const options: IOptions = {
     attrNodeName: false,
-    textNodeName: '#text',
-    ignoreAttributes: true,
     ignoreNameSpace: false,
     allowBooleanAttributes: false, //a tag can have attributes without any value
     //ignoreRootElement : false,
     parseNodeValue: true,
     parseAttributeValue: false,
-    arrayMode: false,
     trimValues: true, //Trim string values of tag and attributes
     cdataTagName: false,
     cdataPositionChar: '\\c',
@@ -99,25 +75,25 @@ export function getTraversalObj(xmlData) {
   let currentNode = xmlObj;
   let textData = "";
 
-//function match(xmlData){
-  for(let i=0; i< xmlData.length; i++){
+//function match(xmlData) {
+  for(let i=0; i< xmlData.length; i++) {
     const ch = xmlData[i];
-    if(ch === '<'){
+    if(ch === '<') {
       if( xmlData[i+1] === '/') {//Closing Tag
         const closeIndex = findClosingIndex(xmlData, ">", i, "Closing Tag is not closed.")
         let tagName = xmlData.substring(i+2,closeIndex).trim();
 
-        if(options.ignoreNameSpace){
+        if(options.ignoreNameSpace) {
           const colonIndex = tagName.indexOf(":");
-          if(colonIndex !== -1){
+          if(colonIndex !== -1) {
             tagName = tagName.substr(colonIndex+1);
           }
         }
 
-        if(currentNode){
-          if(currentNode.val){
+        if(currentNode) {
+          if(currentNode.val) {
             currentNode.val = getValue(currentNode.val) + '' + processTagValue(tagName, textData , options);
-          }else{
+          } else{
             currentNode.val = processTagValue(tagName, textData , options);
           }
         }
@@ -131,19 +107,19 @@ export function getTraversalObj(xmlData) {
       } else if( xmlData.substr(i + 1, 2) === '!D') {
         const closeIndex = findClosingIndex(xmlData, ">", i, "DOCTYPE is not closed.")
         const tagExp = xmlData.substring(i, closeIndex);
-        if(tagExp.indexOf("[") >= 0){
+        if(tagExp.indexOf("[") >= 0) {
           i = xmlData.indexOf("]>", i) + 1;
-        }else{
+        } else{
           i = closeIndex;
         }
-      }else if(xmlData.substr(i + 1, 2) === '![') {
+      } else if(xmlData.substr(i + 1, 2) === '![') {
         const closeIndex = findClosingIndex(xmlData, "]]>", i, "CDATA is not closed.") - 2
         const tagExp = xmlData.substring(i + 9,closeIndex);
 
         //considerations
         //1. CDATA will always have parent node
         //2. A tag with CDATA is not a leaf node so it's value would be string type.
-        if(textData){
+        if(textData) {
           currentNode.val = getValue(currentNode.val) + '' + processTagValue(currentNode.tagname, textData , options);
           textData = "";
         }
@@ -163,49 +139,49 @@ export function getTraversalObj(xmlData) {
         }
 
         i = closeIndex + 2;
-      }else {//Opening tag
+      } else {//Opening tag
         const result = closingIndexForOpeningTag(xmlData, i+1)
         let tagExp = result.data;
         const closeIndex = result.index;
         const separatorIndex = tagExp.indexOf(" ");
         let tagName = tagExp;
-        if(separatorIndex !== -1){
+        if(separatorIndex !== -1) {
           tagName = tagExp.substr(0, separatorIndex).replace(/\s\s*$/, '');
           tagExp = tagExp.substr(separatorIndex + 1);
         }
 
-        if(options.ignoreNameSpace){
+        if(options.ignoreNameSpace) {
           const colonIndex = tagName.indexOf(":");
-          if(colonIndex !== -1){
+          if(colonIndex !== -1) {
             tagName = tagName.substr(colonIndex+1);
           }
         }
 
         //save text to parent node
         if (currentNode && textData) {
-          if(currentNode.tagname !== '!xml'){
+          if(currentNode.tagname !== '!xml') {
             currentNode.val = getValue(currentNode.val) + '' + processTagValue( currentNode.tagname, textData, options);
           }
         }
 
-        if(tagExp.length > 0 && tagExp.lastIndexOf("/") === tagExp.length - 1){//selfClosing tag
+        if(tagExp.length > 0 && tagExp.lastIndexOf("/") === tagExp.length - 1) {//selfClosing tag
 
-          if(tagName[tagName.length - 1] === "/"){ //remove trailing '/'
+          if(tagName[tagName.length - 1] === "/") { //remove trailing '/'
             tagName = tagName.substr(0, tagName.length - 1);
             tagExp = tagName;
-          }else{
+          } else{
             tagExp = tagExp.substr(0, tagExp.length - 1);
           }
 
           const childNode = new xmlNode(tagName, currentNode, '');
-          if(tagName !== tagExp){
+          if(tagName !== tagExp) {
             childNode.attrsMap = buildAttributesMap(tagExp, options);
           }
           currentNode.addChild(childNode);
-        }else{//opening tag
+        } else{//opening tag
 
           const childNode = new xmlNode( tagName, currentNode, undefined);
-          if(tagName !== tagExp){
+          if(tagName !== tagExp) {
             childNode.attrsMap = buildAttributesMap(tagExp, options);
           }
           currentNode.addChild(childNode);
@@ -214,7 +190,7 @@ export function getTraversalObj(xmlData) {
         textData = "";
         i = closeIndex;
       }
-    }else{
+    } else{
       textData += xmlData[i];
     }
   }
@@ -237,11 +213,11 @@ function xmlNode(tagname, parent, val) {
   };
 }
 
-function findClosingIndex(xmlData, str, i, errMsg){
+function findClosingIndex(xmlData, str, i, errMsg) {
   const closingIndex = xmlData.indexOf(str, i);
-  if(closingIndex === -1){
+  if(closingIndex === -1) {
     throw new Error(errMsg)
-  }else{
+  } else{
     return closingIndex + str.length - 1;
   }
 }
@@ -254,20 +230,20 @@ function getValue(v) {
   }
 }
 
-function processTagValue(tagName, val, options) {
+function processTagValue(tagName, val, options: IOptions) {
   if (val) {
     if (options.trimValues) {
       val = val.trim();
     }
     val = options.tagValueProcessor(val, tagName);
-    val = parseValue(val, options.parseNodeValue, options.parseTrueNumberOnly);
+    val = parseValue(val, options.parseNodeValue);
   }
 
   return val;
 }
 
 
-function parseValue(val, shouldParse, parseTrueNumberOnly) {
+function parseValue(val, shouldParse) {
   if (shouldParse && typeof val === 'string') {
     let parsed;
     if (val.trim() === '') {
@@ -282,9 +258,6 @@ function parseValue(val, shouldParse, parseTrueNumberOnly) {
       } else {
         parsed = parseInt(val, 10);
       }
-      if (parseTrueNumberOnly) {
-        parsed = String(parsed) === val ? parsed : val;
-      }
     }
     return parsed;
   } else {
@@ -297,7 +270,7 @@ function parseValue(val, shouldParse, parseTrueNumberOnly) {
 }
 
 
-function closingIndexForOpeningTag(data, i){
+function closingIndexForOpeningTag(data, i) {
   let attrBoundary;
   let tagExp = "";
   for (let index = i; index < data.length; index++) {
@@ -319,39 +292,32 @@ function closingIndexForOpeningTag(data, i){
 }
 
 
-function buildAttributesMap(attrStr, options) {
-  if (!options.ignoreAttributes && typeof attrStr === 'string') {
+function buildAttributesMap(attrStr, options: IOptions) {
+  if (typeof attrStr === 'string') {
     attrStr = attrStr.replace(/\r?\n/g, ' ');
 
     const attrsRegx = new RegExp('([^\\s=]+)\\s*(=\\s*([\'"])(.*?)\\3)?', 'g');
     const matches = getAllMatches(attrStr, attrsRegx);
-    const len = matches.length; //don't make it inline
+    const len = matches.length;
+    if (len === 0) { return; }
     const attrs = {};
     for (let i = 0; i < len; i++) {
       const attrName = resolveNameSpace(matches[i][1], options);
       if (attrName.length) {
+        const namePrefix = '@_';
         if (matches[i][4] !== undefined) {
           if (options.trimValues) {
             matches[i][4] = matches[i][4].trim();
           }
           matches[i][4] = options.attrValueProcessor(matches[i][4], attrName);
-          attrs[options.attributeNamePrefix + attrName] = parseValue(
+          attrs[namePrefix + attrName] = parseValue(
             matches[i][4],
-            options.parseAttributeValue,
-            options.parseTrueNumberOnly
+            options.parseAttributeValue
           );
         } else if (options.allowBooleanAttributes) {
-          attrs[options.attributeNamePrefix + attrName] = true;
+          attrs[namePrefix + attrName] = true;
         }
       }
-    }
-    if (!Object.keys(attrs).length) {
-      return;
-    }
-    if (options.attrNodeName) {
-      const attrCollection = {};
-      attrCollection[options.attrNodeName] = attrs;
-      return attrCollection;
     }
     return attrs;
   }
@@ -373,7 +339,7 @@ function getAllMatches(string, regex) {
   return matches;
 }
 
-function resolveNameSpace(tagname, options) {
+function resolveNameSpace(tagname, options: IOptions) {
   if (options.ignoreNameSpace) {
     const tags = tagname.split(':');
     const prefix = tagname.charAt(0) === '/' ? '/' : '';
