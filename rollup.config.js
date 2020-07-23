@@ -16,9 +16,7 @@ export default [
 			commonjs({
 				sourceMap: true
 			}),
-			typescript({
-				rollupCommonJSResolveHack: false
-			}) // so Rollup can convert TypeScript to JavaScript
+			typescript({})
 		]
 	},
 
@@ -31,7 +29,7 @@ export default [
 	{
 		input: 'src/parser.ts',
 		plugins: [
-			typescript({}), // so Rollup can convert TypeScript to JavaScript
+			typescript({}),
 			sourceMaps()
 		],
 		output: [

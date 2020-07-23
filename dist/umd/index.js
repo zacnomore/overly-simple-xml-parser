@@ -1,3 +1,7 @@
+'use strict';
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
 function parse(xmlData, options) {
     var traversableObj = getTraversalObj(xmlData);
     return convertToJson(traversableObj, options);
@@ -328,5 +332,7 @@ function resolveNameSpace(tagname, options) {
     return tagname;
 }
 
-export { convertToJson, getTraversalObj, parse };
-//# sourceMappingURL=index.esm.js.map
+exports.convertToJson = convertToJson;
+exports.getTraversalObj = getTraversalObj;
+exports.parse = parse;
+//# sourceMappingURL=index.js.map
