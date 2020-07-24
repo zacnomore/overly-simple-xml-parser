@@ -1,0 +1,4 @@
+/node_modules
+/coverage
+rollup.config.sj
+jest.config.js

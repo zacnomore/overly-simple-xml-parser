@@ -1,6 +1,6 @@
 {
   "name": "overly-simple-xml-parser",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A very simple way to turn xml into js objects",
   "main": "./dist/umd/index.js",
   "module": "./dist/index.js",
@@ -26,8 +26,5 @@
     "tslib": "^2.0.0",
     "typescript": "^3.9.7"
   },
-  "files": [
-    "dist/**"
-  ],
   "homepage": "https://github.com/zacnomore/overly-simple-xml-parser"
 }
