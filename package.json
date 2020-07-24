@@ -1,10 +1,11 @@
 {
   "name": "overly-simple-xml-parser",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A very simple way to turn xml into js objects",
-  "main": "dist/umd/index.js",
-  "module": "dist/index.js",
-  "typings": "dist/umd/index.d.ts",
+  "main": "./dist/umd/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/umd/index.d.ts",
+  "typings": "./dist/umd/index.d.ts",
   "repository": "https://github.com/zacnomore/overly-simple-xml-parser",
   "author": "Zachary Svoboda",
   "scripts": {
@@ -26,7 +27,7 @@
     "typescript": "^3.9.7"
   },
   "files": [
-    "dist/parser.js"
+    "dist/**"
   ],
   "homepage": "https://github.com/zacnomore/overly-simple-xml-parser"
 }
