@@ -465,7 +465,7 @@ This episode is sponsored by
 · Anchor: The easiest way to make a podcast.  &lt;a href=&quot;https://anchor.fm/s/2b7f0c44/podcast/sponsor/acugj9/url/https%3A%2F%2Fanchor.fm%2Fapp&quot;&gt;https://anchor.fm/app&lt;/a&gt;
 </itunes:summary>
         <itunes:explicit>No</itunes:explicit>
-        <itunes:duration>5174</itunes:duration>
+        <itunes:duration>5174.0200</itunes:duration>
         <itunes:image href="https://d3t3ozftmdmh3i.cloudfront.net/production/podcast_uploaded/7197465/7197465-1594569151356-1cbc0b68da332.jpg"/>
         <itunes:episodeType>full</itunes:episodeType>
     </item>
@@ -931,7 +931,7 @@ const expected = {
           },
           "itunes:summary": "&lt;p&gt;MBMBaM 400- The Escape to Margaritaville Red Carpet Extravaganza&lt;/p&gt;\n\n--- \n\nThis episode is sponsored by \n· Anchor: The easiest way to make a podcast.  &lt;a href=&quot;https://anchor.fm/s/2b7f0c44/podcast/sponsor/acugj9/url/https%3A%2F%2Fanchor.fm%2Fapp&quot;&gt;https://anchor.fm/app&lt;/a&gt;",
           "itunes:explicit": "No",
-          "itunes:duration": 5174,
+          "itunes:duration": 5174.02,
           "itunes:image": {
             "@_href": "https://d3t3ozftmdmh3i.cloudfront.net/production/podcast_uploaded/7197465/7197465-1594569151356-1cbc0b68da332.jpg"
           },

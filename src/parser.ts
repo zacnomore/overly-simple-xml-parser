@@ -1,21 +1,4 @@
-export class XmlNode {
-  public child: { [key: string]: XmlNode[]} = {};
-  public attrsMap?: AttributeMap;
-
-  constructor(public tagname: string, public parent: XmlNode | undefined, public val: AllowedTypes) {}
-
-  addChild(child: XmlNode) {
-    if (Array.isArray(this.child[child.tagname])) {
-      //already presents
-      this.child[child.tagname].push(child);
-    } else {
-      this.child[child.tagname] = [child];
-    }
-  }
-}
-export type AllowedTypes = string | number | boolean | undefined;
-export type AttributeMap = { [key: string]: AllowedTypes };
-export type ParsedObject = { [key: string]: Object | unknown[]};
+import { XmlNode, ParsedObject, AllowedTypes, AttributeMap } from "./models";
 
 export function parse(xmlData: string) {
   const traversableObj = getTraversalObj(xmlData);
@@ -29,13 +12,8 @@ export function convertToJson(node: XmlNode): ParsedObject | AllowedTypes {
   //when no child node or attr is present
   if ((isEmptyObject(node.child)) && (!node.attrsMap || isEmptyObject(node.attrsMap))) {
     return isExist(node.val) ? node.val : '';
-  } else {
-    //otherwise create a textnode if node has some text
-    if (isExist(node.val)) {
-      if (!(typeof node.val === 'string' && (node.val === '' || node.val === '\\c'))) {
-        jObj['#text'] = node.val;
-      }
-    }
+  } else if (isExist(node.val) && (!(typeof node.val === 'string' && (node.val === '' || node.val === '\\c')))) {
+    jObj['#text'] = node.val;
   }
 
   Object.assign(jObj, node.attrsMap);
@@ -62,21 +40,17 @@ export function convertToJson(node: XmlNode): ParsedObject | AllowedTypes {
   return typeof v !== 'undefined';
 }
 
-
 export function getTraversalObj(xmlData: string): XmlNode {
   xmlData = xmlData.replace(/(\r\n)|\n/, " ");
   const xmlObj = new XmlNode('!xml', undefined, undefined);
   let currentNode: XmlNode = xmlObj;
   let textData: string = "";
 
-// function match(xmlData) {
   for(let i = 0; i < xmlData.length; i++) {
     const ch = xmlData[i];
     if(ch === '<') {
-      if( xmlData[i+1] === '/') {//Closing Tag
+      if( xmlData[i+1] === '/') { //Closing Tag
         const closeIndex = findClosingIndex(xmlData, ">", i, "Closing Tag is not closed.")
-        let tagName = xmlData.substring(i + 2, closeIndex).trim();
-
         if(currentNode) {
           if(currentNode.val) {
             currentNode.val = getValue(currentNode.val) + '' + processTagValue(textData);
@@ -84,6 +58,7 @@ export function getTraversalObj(xmlData: string): XmlNode {
             currentNode.val = processTagValue(textData);
           }
         }
+        // @ts-expect-error
         currentNode = currentNode.parent;
         textData = "";
         i = closeIndex;
@@ -115,7 +90,7 @@ export function getTraversalObj(xmlData: string): XmlNode {
         i = closeIndex + 2;
       } else {//Opening tag
         const result = closingIndexForOpeningTag(xmlData, i+1)
-        let tagExp = result.data;
+        let tagExp = result.data || '';
         const closeIndex = result.index;
         const separatorIndex = tagExp.indexOf(" ");
         let tagName = tagExp;
@@ -131,7 +106,7 @@ export function getTraversalObj(xmlData: string): XmlNode {
           }
         }
 
-        if(tagExp.length > 0 && tagExp.lastIndexOf("/") === tagExp.length - 1) {//selfClosing tag
+        if(tagExp.length > 0 && tagExp.lastIndexOf("/") === tagExp.length - 1) { //selfClosing tag
 
           if(tagName[tagName.length - 1] === "/") { //remove trailing '/'
             tagName = tagName.substr(0, tagName.length - 1);
@@ -197,25 +172,27 @@ function processTagValue(val: string): string | number | boolean {
 }
 
 
-function closingIndexForOpeningTag(data: string, i: number) {
+function closingIndexForOpeningTag(data: string, i: number): { data: string, index: number} {
   let attrBoundary;
   let tagExp = "";
   for (let index = i; index < data.length; index++) {
     let ch = data[index];
     if (attrBoundary) {
-        if (ch === attrBoundary) attrBoundary = "";//reset
+        if (ch === attrBoundary) attrBoundary = ""; //reset
     } else if (ch === '"' || ch === "'") {
         attrBoundary = ch;
     } else if (ch === '>') {
         return {
-          data: tagExp,
-          index: index
+          index,
+          data: tagExp
         }
     } else if (ch === '\t') {
       ch = " "
     }
     tagExp += ch;
   }
+
+  throw new Error('Tag not closed');
 }
 
 
