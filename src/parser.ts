@@ -1,11 +1,9 @@
-import { IOptions } from "./models";
-
-export function parse(xmlData: string, options?: IOptions) {
+export function parse(xmlData: string) {
   const traversableObj = getTraversalObj(xmlData);
-  return convertToJson(traversableObj, options);
+  return convertToJson(traversableObj);
 }
 
-export function convertToJson(node, options: IOptions = {}) {
+export function convertToJson(node) {
   const jObj = {};
 
   const isEmptyObject = (obj) => Object.keys(obj).length === 0;
@@ -15,7 +13,7 @@ export function convertToJson(node, options: IOptions = {}) {
   } else {
     //otherwise create a textnode if node has some text
     if (isExist(node.val)) {
-      if (!(typeof node.val === 'string' && (node.val === '' || node.val === options.cdataPositionChar))) {
+      if (!(typeof node.val === 'string' && (node.val === '' || node.val === '\\c'))) {
         jObj['#text'] = node.val;
       }
     }
@@ -28,10 +26,10 @@ export function convertToJson(node, options: IOptions = {}) {
     if (node.child[key] && node.child[key].length > 1) {
       jObj[key] = [];
       for (var tag in node.child[key]) {
-        jObj[key].push(convertToJson(node.child[key][tag], options));
+        jObj[key].push(convertToJson(node.child[key][tag]));
       }
     } else {
-      jObj[key] = convertToJson(node.child[key][0], options);
+      jObj[key] = convertToJson(node.child[key][0]);
     }
   });
 
@@ -55,51 +53,24 @@ function merge(target: {}, source) {
 
 
 export function getTraversalObj(xmlData: string) {
-  const options: IOptions = {
-    attrNodeName: false,
-    ignoreNameSpace: false,
-    allowBooleanAttributes: false, //a tag can have attributes without any value
-    //ignoreRootElement : false,
-    parseNodeValue: true,
-    parseAttributeValue: false,
-    trimValues: true, //Trim string values of tag and attributes
-    cdataTagName: false,
-    cdataPositionChar: '\\c',
-    // eslint-disable-next-line no-unused-vars
-    tagValueProcessor: function(a, tagName) {
-      return a;
-    },
-    // eslint-disable-next-line no-unused-vars
-    attrValueProcessor: function(a, attrName) {
-      return a;
-    }
-  };
-
   xmlData = xmlData.replace(/(\r\n)|\n/, " ");
   const xmlObj = new xmlNode('!xml', undefined, undefined);
   let currentNode = xmlObj;
   let textData = "";
 
-//function match(xmlData) {
-  for(let i=0; i< xmlData.length; i++) {
+// function match(xmlData) {
+  for(let i = 0; i < xmlData.length; i++) {
     const ch = xmlData[i];
     if(ch === '<') {
       if( xmlData[i+1] === '/') {//Closing Tag
         const closeIndex = findClosingIndex(xmlData, ">", i, "Closing Tag is not closed.")
-        let tagName = xmlData.substring(i+2,closeIndex).trim();
-
-        if(options.ignoreNameSpace) {
-          const colonIndex = tagName.indexOf(":");
-          if(colonIndex !== -1) {
-            tagName = tagName.substr(colonIndex+1);
-          }
-        }
+        let tagName = xmlData.substring(i + 2, closeIndex).trim();
 
         if(currentNode) {
           if(currentNode.val) {
-            currentNode.val = getValue(currentNode.val) + '' + processTagValue(tagName, textData , options);
+            currentNode.val = getValue(currentNode.val) + '' + processTagValue(tagName, textData);
           } else{
-            currentNode.val = processTagValue(tagName, textData , options);
+            currentNode.val = processTagValue(tagName, textData);
           }
         }
         currentNode = currentNode.parent;
@@ -125,23 +96,10 @@ export function getTraversalObj(xmlData: string) {
         //1. CDATA will always have parent node
         //2. A tag with CDATA is not a leaf node so it's value would be string type.
         if(textData) {
-          currentNode.val = getValue(currentNode.val) + '' + processTagValue(currentNode.tagname, textData , options);
+          currentNode.val = getValue(currentNode.val) + '' + processTagValue(currentNode.tagname, textData);
           textData = "";
         }
-
-        if (options.cdataTagName) {
-          //add cdata node
-          const childNode = new xmlNode(options.cdataTagName, currentNode, tagExp);
-          currentNode.addChild(childNode);
-          //for backtracking
-          currentNode.val = getValue(currentNode.val) + options.cdataPositionChar;
-          //add rest value to parent node
-          if (tagExp) {
-            childNode.val = tagExp;
-          }
-        } else {
-          currentNode.val = (currentNode.val || '') + (tagExp || '');
-        }
+        currentNode.val = (currentNode.val || '') + (tagExp || '');
 
         i = closeIndex + 2;
       } else {//Opening tag
@@ -155,17 +113,10 @@ export function getTraversalObj(xmlData: string) {
           tagExp = tagExp.substr(separatorIndex + 1);
         }
 
-        if(options.ignoreNameSpace) {
-          const colonIndex = tagName.indexOf(":");
-          if(colonIndex !== -1) {
-            tagName = tagName.substr(colonIndex+1);
-          }
-        }
-
         //save text to parent node
         if (currentNode && textData) {
           if(currentNode.tagname !== '!xml') {
-            currentNode.val = getValue(currentNode.val) + '' + processTagValue( currentNode.tagname, textData, options);
+            currentNode.val = getValue(currentNode.val) + '' + processTagValue( currentNode.tagname, textData);
           }
         }
 
@@ -180,14 +131,14 @@ export function getTraversalObj(xmlData: string) {
 
           const childNode = new xmlNode(tagName, currentNode, '');
           if(tagName !== tagExp) {
-            childNode.attrsMap = buildAttributesMap(tagExp, options);
+            childNode.attrsMap = buildAttributesMap(tagExp);
           }
           currentNode.addChild(childNode);
         } else{//opening tag
 
           const childNode = new xmlNode( tagName, currentNode, undefined);
           if(tagName !== tagExp) {
-            childNode.attrsMap = buildAttributesMap(tagExp, options);
+            childNode.attrsMap = buildAttributesMap(tagExp);
           }
           currentNode.addChild(childNode);
           currentNode = childNode;
@@ -235,13 +186,10 @@ function getValue(v) {
   }
 }
 
-function processTagValue(tagName, val, options: IOptions) {
+function processTagValue(tagName, val) {
   if (val) {
-    if (options.trimValues) {
-      val = val.trim();
-    }
-    val = options.tagValueProcessor(val, tagName);
-    val = parseValue(val, options.parseNodeValue);
+    val = val.trim();
+    val = parseValue(val, true);
   }
 
   return val;
@@ -257,11 +205,13 @@ function parseValue(val, shouldParse) {
       if (val.indexOf('0x') !== -1) {
         //support hexa decimal
         parsed = parseInt(val, 16);
-      } else if (val.indexOf('.') !== -1) {
+      } else if (val.indexOf('.') !== -1 && !isNaN(parseFloat(val))) {
         parsed = parseFloat(val);
         val = val.replace(/\.?0+$/, "");
-      } else {
+      } else if (!isNaN(parseInt(val))) {
         parsed = parseInt(val, 10);
+      } else {
+        parsed = val;
       }
     }
     return parsed;
@@ -297,7 +247,7 @@ function closingIndexForOpeningTag(data, i) {
 }
 
 
-function buildAttributesMap(attrStr, options: IOptions) {
+function buildAttributesMap(attrStr) {
   if (typeof attrStr === 'string') {
     attrStr = attrStr.replace(/\r?\n/g, ' ');
 
@@ -307,20 +257,15 @@ function buildAttributesMap(attrStr, options: IOptions) {
     if (len === 0) { return; }
     const attrs = {};
     for (let i = 0; i < len; i++) {
-      const attrName = resolveNameSpace(matches[i][1], options);
+      const attrName = matches[i][1];
       if (attrName.length) {
         const namePrefix = '@_';
         if (matches[i][4] !== undefined) {
-          if (options.trimValues) {
-            matches[i][4] = matches[i][4].trim();
-          }
-          matches[i][4] = options.attrValueProcessor(matches[i][4], attrName);
+          matches[i][4] = matches[i][4].trim();
           attrs[namePrefix + attrName] = parseValue(
             matches[i][4],
-            options.parseAttributeValue
+            false
           );
-        } else if (options.allowBooleanAttributes) {
-          attrs[namePrefix + attrName] = true;
         }
       }
     }
@@ -342,18 +287,4 @@ function getAllMatches(string, regex) {
     match = regex.exec(string);
   }
   return matches;
-}
-
-function resolveNameSpace(tagname, options: IOptions) {
-  if (options.ignoreNameSpace) {
-    const tags = tagname.split(':');
-    const prefix = tagname.charAt(0) === '/' ? '/' : '';
-    if (tags[0] === 'xmlns') {
-      return '';
-    }
-    if (tags.length === 2) {
-      tagname = prefix + tags[1];
-    }
-  }
-  return tagname;
 }
