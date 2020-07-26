@@ -1,10 +1,10 @@
 export class XmlNode {
-  public child = {};
+  public child: { [key: string]: XmlNode[]} = {};
   public attrsMap = {};
 
-  constructor(public tagname: string, public parent, public val) {}
+  constructor(public tagname: string, public parent: XmlNode | undefined, public val) {}
 
-  addChild(child) {
+  addChild(child: XmlNode) {
     if (Array.isArray(this.child[child.tagname])) {
       //already presents
       this.child[child.tagname].push(child);
@@ -22,9 +22,9 @@ export function parse(xmlData: string) {
 export function convertToJson(node: XmlNode): { [key: string]: object | any[]} {
   const jObj = {};
 
-  const isEmptyObject = (obj) => Object.keys(obj).length === 0;
+  const isEmptyObject = (obj: object) => Object.keys(obj).length === 0;
   //when no child node or attr is present
-  if ((!node.child || isEmptyObject(node.child)) && (!node.attrsMap || isEmptyObject(node.attrsMap))) {
+  if ((isEmptyObject(node.child)) && (!node.attrsMap || isEmptyObject(node.attrsMap))) {
     return isExist(node.val) ? node.val : '';
   } else {
     //otherwise create a textnode if node has some text
@@ -37,14 +37,14 @@ export function convertToJson(node: XmlNode): { [key: string]: object | any[]} {
 
   Object.assign(jObj, node.attrsMap);
 
-  Object.keys(node.child).forEach(key => {
-    if (node.child[key] && node.child[key].length > 1) {
+  Object.entries(node.child).forEach(([key, value]) => {
+    if (Array.isArray(value) && value.length > 1) {
       jObj[key] = [];
-      for (var tag in node.child[key]) {
-        jObj[key].push(convertToJson(node.child[key][tag]));
+      for (var tag in value) {
+        jObj[key].push(convertToJson(value[tag]));
       }
     } else {
-      jObj[key] = convertToJson(node.child[key][0]);
+      jObj[key] = convertToJson(value[0]);
     }
   });
 
@@ -52,7 +52,7 @@ export function convertToJson(node: XmlNode): { [key: string]: object | any[]} {
   return jObj;
 }
 
- function isExist(v): boolean {
+ function isExist(v: Object): boolean {
   return typeof v !== 'undefined';
 }
 
@@ -60,7 +60,7 @@ export function convertToJson(node: XmlNode): { [key: string]: object | any[]} {
 export function getTraversalObj(xmlData: string): XmlNode {
   xmlData = xmlData.replace(/(\r\n)|\n/, " ");
   const xmlObj = new XmlNode('!xml', undefined, undefined);
-  let currentNode = xmlObj;
+  let currentNode: XmlNode = xmlObj;
   let textData: string = "";
 
 // function match(xmlData) {
@@ -175,41 +175,18 @@ function getValue(v) {
   }
 }
 
-function processTagValue(val) {
-  if (val) {
-    val = val.trim();
-    val = parseValue(val, true);
-  }
-
-  return val;
-}
-
-
-function parseValue(val: string, shouldParse: boolean): number | string | boolean {
-  if (shouldParse) {
-    let parsed: number | string | boolean;
-    if (val.trim() === '') {
-      parsed = val === 'true' ? true : val === 'false' ? false : val;
-    } else {
-      if (val.indexOf('0x') !== -1) {
-        //support hexa decimal
-        parsed = parseInt(val, 16);
-      } else if (val.indexOf('.') !== -1 && !isNaN(parseFloat(val))) {
-        parsed = parseFloat(val);
-        val = val.replace(/\.?0+$/, "");
-      } else if (!isNaN(parseInt(val))) {
-        parsed = parseInt(val, 10);
-      } else {
-        parsed = val;
-      }
-    }
-    return parsed;
+function processTagValue(val: string): string | number | boolean {
+  if(val === 'false' || val === 'true') {
+    return val === 'true';
+  } else if (val.indexOf('0x') !== -1) {
+    //support hexa decimal
+    return parseInt(val, 16);
+  } else if (val.indexOf('.') !== -1 && !isNaN(parseFloat(val))) {
+    return parseFloat(val);
+  } else if (!isNaN(parseInt(val))) {
+    return parseInt(val, 10);
   } else {
-    if (isExist(val)) {
-      return val;
-    } else {
-      return '';
-    }
+    return val.trim();
   }
 }
 
@@ -236,7 +213,7 @@ function closingIndexForOpeningTag(data: string, i: number) {
 }
 
 
-function buildAttributesMap(attrStr: string): { [key: string]: string | number | boolean} {
+function buildAttributesMap(attrStr: string): { [key: string]: string | number | boolean } | undefined {
   attrStr = attrStr.replace(/\r?\n/g, ' ');
 
   const attrsRegx = new RegExp('([^\\s=]+)\\s*(=\\s*([\'"])(.*?)\\3)?', 'g');
@@ -250,10 +227,7 @@ function buildAttributesMap(attrStr: string): { [key: string]: string | number |
       const namePrefix = '@_';
       if (matches[i][4] !== undefined) {
         matches[i][4] = matches[i][4].trim();
-        attrs[namePrefix + attrName] = parseValue(
-          matches[i][4],
-          false
-        );
+        attrs[namePrefix + attrName] = matches[i][4];
       }
     }
   }
