@@ -1,9 +1,25 @@
+export class XmlNode {
+  public child = {};
+  public attrsMap = {};
+
+  constructor(public tagname: string, public parent, public val) {}
+
+  addChild(child) {
+    if (Array.isArray(this.child[child.tagname])) {
+      //already presents
+      this.child[child.tagname].push(child);
+    } else {
+      this.child[child.tagname] = [child];
+    }
+  }
+}
+
 export function parse(xmlData: string) {
   const traversableObj = getTraversalObj(xmlData);
   return convertToJson(traversableObj);
 }
 
-export function convertToJson(node) {
+export function convertToJson(node: XmlNode): { [key: string]: object | any[]} {
   const jObj = {};
 
   const isEmptyObject = (obj) => Object.keys(obj).length === 0;
@@ -21,7 +37,7 @@ export function convertToJson(node) {
 
   Object.assign(jObj, node.attrsMap);
 
-  Object.keys(node.child).forEach((key, index) => {
+  Object.keys(node.child).forEach(key => {
     if (node.child[key] && node.child[key].length > 1) {
       jObj[key] = [];
       for (var tag in node.child[key]) {
@@ -41,9 +57,9 @@ export function convertToJson(node) {
 }
 
 
-export function getTraversalObj(xmlData: string) {
+export function getTraversalObj(xmlData: string): XmlNode {
   xmlData = xmlData.replace(/(\r\n)|\n/, " ");
-  const xmlObj = new xmlNode('!xml', undefined, undefined);
+  const xmlObj = new XmlNode('!xml', undefined, undefined);
   let currentNode = xmlObj;
   let textData: string = "";
 
@@ -118,14 +134,14 @@ export function getTraversalObj(xmlData: string) {
             tagExp = tagExp.substr(0, tagExp.length - 1);
           }
 
-          const childNode = new xmlNode(tagName, currentNode, '');
+          const childNode = new XmlNode(tagName, currentNode, '');
           if(tagName !== tagExp) {
             childNode.attrsMap = buildAttributesMap(tagExp);
           }
           currentNode.addChild(childNode);
         } else{//opening tag
 
-          const childNode = new xmlNode( tagName, currentNode, undefined);
+          const childNode = new XmlNode( tagName, currentNode, undefined);
           if(tagName !== tagExp) {
             childNode.attrsMap = buildAttributesMap(tagExp);
           }
@@ -140,22 +156,6 @@ export function getTraversalObj(xmlData: string) {
     }
   }
   return xmlObj;
-}
-
-function xmlNode(tagname, parent, val) {
-  this.tagname = tagname;
-  this.parent = parent;
-  this.child = {}; //child tags
-  this.attrsMap = {}; //attributes map
-  this.val = val; //text only
-  this.addChild = function(child) {
-    if (Array.isArray(this.child[child.tagname])) {
-      //already presents
-      this.child[child.tagname].push(child);
-    } else {
-      this.child[child.tagname] = [child];
-    }
-  };
 }
 
 function findClosingIndex(xmlData: string, str: string, i: number, errMsg: string): number {
@@ -236,7 +236,7 @@ function closingIndexForOpeningTag(data: string, i: number) {
 }
 
 
-function buildAttributesMap(attrStr: string) {
+function buildAttributesMap(attrStr: string): { [key: string]: string | number | boolean} {
   attrStr = attrStr.replace(/\r?\n/g, ' ');
 
   const attrsRegx = new RegExp('([^\\s=]+)\\s*(=\\s*([\'"])(.*?)\\3)?', 'g');
@@ -261,11 +261,11 @@ function buildAttributesMap(attrStr: string) {
 }
 
 
-function getAllMatches(string: string, regex: RegExp) {
-  const matches = [];
+function getAllMatches(string: string, regex: RegExp): string[][] {
+  const matches: string[][] = [];
   let match = regex.exec(string);
   while (match) {
-    const allmatches = [];
+    const allmatches: string[] = [];
     const len = match.length;
     for (let index = 0; index < len; index++) {
       allmatches.push(match[index]);
