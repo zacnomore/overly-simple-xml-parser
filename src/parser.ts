@@ -19,8 +19,7 @@ export function convertToJson(node) {
     }
   }
 
-  // Switch to object.asign
-  merge(jObj, node.attrsMap);
+  Object.assign(jObj, node.attrsMap);
 
   Object.keys(node.child).forEach((key, index) => {
     if (node.child[key] && node.child[key].length > 1) {
@@ -37,18 +36,8 @@ export function convertToJson(node) {
   return jObj;
 }
 
- function isExist(v) {
+ function isExist(v): boolean {
   return typeof v !== 'undefined';
-}
-
-function merge(target: {}, source) {
-  if (source) {
-    const keys = Object.keys(source); // will return an array of own properties
-    const len = keys.length; //don't make it inline
-    for (let i = 0; i < len; i++) {
-      target[keys[i]] = source[keys[i]];
-    }
-  }
 }
 
 
@@ -56,7 +45,7 @@ export function getTraversalObj(xmlData: string) {
   xmlData = xmlData.replace(/(\r\n)|\n/, " ");
   const xmlObj = new xmlNode('!xml', undefined, undefined);
   let currentNode = xmlObj;
-  let textData = "";
+  let textData: string = "";
 
 // function match(xmlData) {
   for(let i = 0; i < xmlData.length; i++) {
@@ -68,9 +57,9 @@ export function getTraversalObj(xmlData: string) {
 
         if(currentNode) {
           if(currentNode.val) {
-            currentNode.val = getValue(currentNode.val) + '' + processTagValue(tagName, textData);
+            currentNode.val = getValue(currentNode.val) + '' + processTagValue(textData);
           } else{
-            currentNode.val = processTagValue(tagName, textData);
+            currentNode.val = processTagValue(textData);
           }
         }
         currentNode = currentNode.parent;
@@ -96,7 +85,7 @@ export function getTraversalObj(xmlData: string) {
         //1. CDATA will always have parent node
         //2. A tag with CDATA is not a leaf node so it's value would be string type.
         if(textData) {
-          currentNode.val = getValue(currentNode.val) + '' + processTagValue(currentNode.tagname, textData);
+          currentNode.val = getValue(currentNode.val) + '' + processTagValue(textData);
           textData = "";
         }
         currentNode.val = (currentNode.val || '') + (tagExp || '');
@@ -116,7 +105,7 @@ export function getTraversalObj(xmlData: string) {
         //save text to parent node
         if (currentNode && textData) {
           if(currentNode.tagname !== '!xml') {
-            currentNode.val = getValue(currentNode.val) + '' + processTagValue( currentNode.tagname, textData);
+            currentNode.val = getValue(currentNode.val) + '' + processTagValue(textData);
           }
         }
 
@@ -169,7 +158,7 @@ function xmlNode(tagname, parent, val) {
   };
 }
 
-function findClosingIndex(xmlData, str, i, errMsg) {
+function findClosingIndex(xmlData: string, str: string, i: number, errMsg: string): number {
   const closingIndex = xmlData.indexOf(str, i);
   if(closingIndex === -1) {
     throw new Error(errMsg)
@@ -186,7 +175,7 @@ function getValue(v) {
   }
 }
 
-function processTagValue(tagName, val) {
+function processTagValue(val) {
   if (val) {
     val = val.trim();
     val = parseValue(val, true);
@@ -196,9 +185,9 @@ function processTagValue(tagName, val) {
 }
 
 
-function parseValue(val, shouldParse) {
-  if (shouldParse && typeof val === 'string') {
-    let parsed;
+function parseValue(val: string, shouldParse: boolean): number | string | boolean {
+  if (shouldParse) {
+    let parsed: number | string | boolean;
     if (val.trim() === '') {
       parsed = val === 'true' ? true : val === 'false' ? false : val;
     } else {
@@ -225,7 +214,7 @@ function parseValue(val, shouldParse) {
 }
 
 
-function closingIndexForOpeningTag(data, i) {
+function closingIndexForOpeningTag(data: string, i: number) {
   let attrBoundary;
   let tagExp = "";
   for (let index = i; index < data.length; index++) {
@@ -247,34 +236,32 @@ function closingIndexForOpeningTag(data, i) {
 }
 
 
-function buildAttributesMap(attrStr) {
-  if (typeof attrStr === 'string') {
-    attrStr = attrStr.replace(/\r?\n/g, ' ');
+function buildAttributesMap(attrStr: string) {
+  attrStr = attrStr.replace(/\r?\n/g, ' ');
 
-    const attrsRegx = new RegExp('([^\\s=]+)\\s*(=\\s*([\'"])(.*?)\\3)?', 'g');
-    const matches = getAllMatches(attrStr, attrsRegx);
-    const len = matches.length;
-    if (len === 0) { return; }
-    const attrs = {};
-    for (let i = 0; i < len; i++) {
-      const attrName = matches[i][1];
-      if (attrName.length) {
-        const namePrefix = '@_';
-        if (matches[i][4] !== undefined) {
-          matches[i][4] = matches[i][4].trim();
-          attrs[namePrefix + attrName] = parseValue(
-            matches[i][4],
-            false
-          );
-        }
+  const attrsRegx = new RegExp('([^\\s=]+)\\s*(=\\s*([\'"])(.*?)\\3)?', 'g');
+  const matches = getAllMatches(attrStr, attrsRegx);
+  const len = matches.length;
+  if (len === 0) { return; }
+  const attrs = {};
+  for (let i = 0; i < len; i++) {
+    const attrName = matches[i][1];
+    if (attrName.length) {
+      const namePrefix = '@_';
+      if (matches[i][4] !== undefined) {
+        matches[i][4] = matches[i][4].trim();
+        attrs[namePrefix + attrName] = parseValue(
+          matches[i][4],
+          false
+        );
       }
     }
-    return attrs;
   }
+  return attrs;
 }
 
 
-function getAllMatches(string, regex) {
+function getAllMatches(string: string, regex: RegExp) {
   const matches = [];
   let match = regex.exec(string);
   while (match) {
