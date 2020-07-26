@@ -1,8 +1,8 @@
 export class XmlNode {
   public child: { [key: string]: XmlNode[]} = {};
-  public attrsMap = {};
+  public attrsMap?: AttributeMap;
 
-  constructor(public tagname: string, public parent: XmlNode | undefined, public val) {}
+  constructor(public tagname: string, public parent: XmlNode | undefined, public val: AllowedTypes) {}
 
   addChild(child: XmlNode) {
     if (Array.isArray(this.child[child.tagname])) {
@@ -13,14 +13,17 @@ export class XmlNode {
     }
   }
 }
+export type AllowedTypes = string | number | boolean | undefined;
+export type AttributeMap = { [key: string]: AllowedTypes };
+export type ParsedObject = { [key: string]: Object | unknown[]};
 
 export function parse(xmlData: string) {
   const traversableObj = getTraversalObj(xmlData);
   return convertToJson(traversableObj);
 }
 
-export function convertToJson(node: XmlNode): { [key: string]: object | any[]} {
-  const jObj = {};
+export function convertToJson(node: XmlNode): ParsedObject | AllowedTypes {
+  const jObj: ParsedObject = {};
 
   const isEmptyObject = (obj: object) => Object.keys(obj).length === 0;
   //when no child node or attr is present
@@ -41,10 +44,13 @@ export function convertToJson(node: XmlNode): { [key: string]: object | any[]} {
     if (Array.isArray(value) && value.length > 1) {
       jObj[key] = [];
       for (var tag in value) {
-        jObj[key].push(convertToJson(value[tag]));
+        (jObj[key] as unknown[]).push(convertToJson(value[tag]));
       }
     } else {
-      jObj[key] = convertToJson(value[0]);
+      const jsVal = convertToJson(value[0]);
+      if(jsVal) {
+        jObj[key] = jsVal; 
+      }
     }
   });
 
@@ -52,7 +58,7 @@ export function convertToJson(node: XmlNode): { [key: string]: object | any[]} {
   return jObj;
 }
 
- function isExist(v: Object): boolean {
+ function isExist(v: Object | undefined): v is Object {
   return typeof v !== 'undefined';
 }
 
@@ -167,7 +173,7 @@ function findClosingIndex(xmlData: string, str: string, i: number, errMsg: strin
   }
 }
 
-function getValue(v) {
+function getValue(v: AllowedTypes): Omit<AllowedTypes, 'undefined'> {
   if (isExist(v)) {
     return v;
   } else {
@@ -213,14 +219,14 @@ function closingIndexForOpeningTag(data: string, i: number) {
 }
 
 
-function buildAttributesMap(attrStr: string): { [key: string]: string | number | boolean } | undefined {
+function buildAttributesMap(attrStr: string): AttributeMap | undefined {
   attrStr = attrStr.replace(/\r?\n/g, ' ');
 
   const attrsRegx = new RegExp('([^\\s=]+)\\s*(=\\s*([\'"])(.*?)\\3)?', 'g');
   const matches = getAllMatches(attrStr, attrsRegx);
   const len = matches.length;
   if (len === 0) { return; }
-  const attrs = {};
+  const attrs: AttributeMap = {};
   for (let i = 0; i < len; i++) {
     const attrName = matches[i][1];
     if (attrName.length) {
