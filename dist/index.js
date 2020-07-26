@@ -1,31 +1,48 @@
-function parse(xmlData, options) {
+var XmlNode = (function () {
+    function XmlNode(tagname, parent, val) {
+        this.tagname = tagname;
+        this.parent = parent;
+        this.val = val;
+        this.child = {};
+    }
+    XmlNode.prototype.addChild = function (child) {
+        if (Array.isArray(this.child[child.tagname])) {
+            this.child[child.tagname].push(child);
+        }
+        else {
+            this.child[child.tagname] = [child];
+        }
+    };
+    return XmlNode;
+}());
+
+function parse(xmlData) {
     var traversableObj = getTraversalObj(xmlData);
-    return convertToJson(traversableObj, options);
+    return convertToJson(traversableObj);
 }
-function convertToJson(node, options) {
-    if (options === void 0) { options = {}; }
+function convertToJson(node) {
     var jObj = {};
     var isEmptyObject = function (obj) { return Object.keys(obj).length === 0; };
-    if ((!node.child || isEmptyObject(node.child)) && (!node.attrsMap || isEmptyObject(node.attrsMap))) {
+    if ((isEmptyObject(node.child)) && (!node.attrsMap || isEmptyObject(node.attrsMap))) {
         return isExist(node.val) ? node.val : '';
     }
-    else {
-        if (isExist(node.val)) {
-            if (!(typeof node.val === 'string' && (node.val === '' || node.val === options.cdataPositionChar))) {
-                jObj['#text'] = node.val;
-            }
-        }
+    else if (isExist(node.val) && (!(typeof node.val === 'string' && (node.val === '' || node.val === '\\c')))) {
+        jObj['#text'] = node.val;
     }
-    merge(jObj, node.attrsMap);
-    Object.keys(node.child).forEach(function (key, index) {
-        if (node.child[key] && node.child[key].length > 1) {
+    Object.assign(jObj, node.attrsMap);
+    Object.entries(node.child).forEach(function (_a) {
+        var key = _a[0], value = _a[1];
+        if (Array.isArray(value) && value.length > 1) {
             jObj[key] = [];
-            for (var tag in node.child[key]) {
-                jObj[key].push(convertToJson(node.child[key][tag], options));
+            for (var tag in value) {
+                jObj[key].push(convertToJson(value[tag]));
             }
         }
         else {
-            jObj[key] = convertToJson(node.child[key][0], options);
+            var jsVal = convertToJson(value[0]);
+            if (jsVal) {
+                jObj[key] = jsVal;
+            }
         }
     });
     return jObj;
@@ -33,34 +50,9 @@ function convertToJson(node, options) {
 function isExist(v) {
     return typeof v !== 'undefined';
 }
-function merge(target, source) {
-    if (source) {
-        var keys = Object.keys(source);
-        var len = keys.length;
-        for (var i = 0; i < len; i++) {
-            target[keys[i]] = source[keys[i]];
-        }
-    }
-}
 function getTraversalObj(xmlData) {
-    var options = {
-        attrNodeName: false,
-        ignoreNameSpace: false,
-        allowBooleanAttributes: false,
-        parseNodeValue: true,
-        parseAttributeValue: false,
-        trimValues: true,
-        cdataTagName: false,
-        cdataPositionChar: '\\c',
-        tagValueProcessor: function (a, tagName) {
-            return a;
-        },
-        attrValueProcessor: function (a, attrName) {
-            return a;
-        }
-    };
     xmlData = xmlData.replace(/(\r\n)|\n/, " ");
-    var xmlObj = new xmlNode('!xml', undefined, undefined);
+    var xmlObj = new XmlNode('!xml', undefined, undefined);
     var currentNode = xmlObj;
     var textData = "";
     for (var i = 0; i < xmlData.length; i++) {
@@ -68,19 +60,12 @@ function getTraversalObj(xmlData) {
         if (ch === '<') {
             if (xmlData[i + 1] === '/') {
                 var closeIndex = findClosingIndex(xmlData, ">", i, "Closing Tag is not closed.");
-                var tagName = xmlData.substring(i + 2, closeIndex).trim();
-                if (options.ignoreNameSpace) {
-                    var colonIndex = tagName.indexOf(":");
-                    if (colonIndex !== -1) {
-                        tagName = tagName.substr(colonIndex + 1);
-                    }
-                }
                 if (currentNode) {
                     if (currentNode.val) {
-                        currentNode.val = getValue(currentNode.val) + '' + processTagValue(tagName, textData, options);
+                        currentNode.val = getValue(currentNode.val) + '' + processTagValue(textData);
                     }
                     else {
-                        currentNode.val = processTagValue(tagName, textData, options);
+                        currentNode.val = processTagValue(textData);
                     }
                 }
                 currentNode = currentNode.parent;
@@ -107,25 +92,15 @@ function getTraversalObj(xmlData) {
                 var closeIndex = findClosingIndex(xmlData, "]]>", i, "CDATA is not closed.") - 2;
                 var tagExp = xmlData.substring(i + 9, closeIndex);
                 if (textData) {
-                    currentNode.val = getValue(currentNode.val) + '' + processTagValue(currentNode.tagname, textData, options);
+                    currentNode.val = getValue(currentNode.val) + '' + processTagValue(textData);
                     textData = "";
                 }
-                if (options.cdataTagName) {
-                    var childNode = new xmlNode(options.cdataTagName, currentNode, tagExp);
-                    currentNode.addChild(childNode);
-                    currentNode.val = getValue(currentNode.val) + options.cdataPositionChar;
-                    if (tagExp) {
-                        childNode.val = tagExp;
-                    }
-                }
-                else {
-                    currentNode.val = (currentNode.val || '') + (tagExp || '');
-                }
+                currentNode.val = (currentNode.val || '') + (tagExp || '');
                 i = closeIndex + 2;
             }
             else {
                 var result = closingIndexForOpeningTag(xmlData, i + 1);
-                var tagExp = result.data;
+                var tagExp = result.data || '';
                 var closeIndex = result.index;
                 var separatorIndex = tagExp.indexOf(" ");
                 var tagName = tagExp;
@@ -133,15 +108,9 @@ function getTraversalObj(xmlData) {
                     tagName = tagExp.substr(0, separatorIndex).replace(/\s\s*$/, '');
                     tagExp = tagExp.substr(separatorIndex + 1);
                 }
-                if (options.ignoreNameSpace) {
-                    var colonIndex = tagName.indexOf(":");
-                    if (colonIndex !== -1) {
-                        tagName = tagName.substr(colonIndex + 1);
-                    }
-                }
                 if (currentNode && textData) {
                     if (currentNode.tagname !== '!xml') {
-                        currentNode.val = getValue(currentNode.val) + '' + processTagValue(currentNode.tagname, textData, options);
+                        currentNode.val = getValue(currentNode.val) + '' + processTagValue(textData);
                     }
                 }
                 if (tagExp.length > 0 && tagExp.lastIndexOf("/") === tagExp.length - 1) {
@@ -152,16 +121,16 @@ function getTraversalObj(xmlData) {
                     else {
                         tagExp = tagExp.substr(0, tagExp.length - 1);
                     }
-                    var childNode = new xmlNode(tagName, currentNode, '');
+                    var childNode = new XmlNode(tagName, currentNode, '');
                     if (tagName !== tagExp) {
-                        childNode.attrsMap = buildAttributesMap(tagExp, options);
+                        childNode.attrsMap = buildAttributesMap(tagExp);
                     }
                     currentNode.addChild(childNode);
                 }
                 else {
-                    var childNode = new xmlNode(tagName, currentNode, undefined);
+                    var childNode = new XmlNode(tagName, currentNode, undefined);
                     if (tagName !== tagExp) {
-                        childNode.attrsMap = buildAttributesMap(tagExp, options);
+                        childNode.attrsMap = buildAttributesMap(tagExp);
                     }
                     currentNode.addChild(childNode);
                     currentNode = childNode;
@@ -175,21 +144,6 @@ function getTraversalObj(xmlData) {
         }
     }
     return xmlObj;
-}
-function xmlNode(tagname, parent, val) {
-    this.tagname = tagname;
-    this.parent = parent;
-    this.child = {};
-    this.attrsMap = {};
-    this.val = val;
-    this.addChild = function (child) {
-        if (Array.isArray(this.child[child.tagname])) {
-            this.child[child.tagname].push(child);
-        }
-        else {
-            this.child[child.tagname] = [child];
-        }
-    };
 }
 function findClosingIndex(xmlData, str, i, errMsg) {
     var closingIndex = xmlData.indexOf(str, i);
@@ -208,43 +162,21 @@ function getValue(v) {
         return '';
     }
 }
-function processTagValue(tagName, val, options) {
-    if (val) {
-        if (options.trimValues) {
-            val = val.trim();
-        }
-        val = options.tagValueProcessor(val, tagName);
-        val = parseValue(val, options.parseNodeValue);
+function processTagValue(val) {
+    if (val === 'false' || val === 'true') {
+        return val === 'true';
     }
-    return val;
-}
-function parseValue(val, shouldParse) {
-    if (shouldParse && typeof val === 'string') {
-        var parsed = void 0;
-        if (val.trim() === '') {
-            parsed = val === 'true' ? true : val === 'false' ? false : val;
-        }
-        else {
-            if (val.indexOf('0x') !== -1) {
-                parsed = parseInt(val, 16);
-            }
-            else if (val.indexOf('.') !== -1) {
-                parsed = parseFloat(val);
-                val = val.replace(/\.?0+$/, "");
-            }
-            else {
-                parsed = parseInt(val, 10);
-            }
-        }
-        return parsed;
+    else if (val.indexOf('0x') !== -1) {
+        return parseInt(val, 16);
+    }
+    else if (val.indexOf('.') !== -1 && !isNaN(parseFloat(val))) {
+        return parseFloat(val);
+    }
+    else if (!isNaN(parseInt(val))) {
+        return parseInt(val, 10);
     }
     else {
-        if (isExist(val)) {
-            return val;
-        }
-        else {
-            return '';
-        }
+        return val.trim();
     }
 }
 function closingIndexForOpeningTag(data, i) {
@@ -261,8 +193,8 @@ function closingIndexForOpeningTag(data, i) {
         }
         else if (ch === '>') {
             return {
-                data: tagExp,
-                index: index
+                index: index,
+                data: tagExp
             };
         }
         else if (ch === '\t') {
@@ -270,35 +202,28 @@ function closingIndexForOpeningTag(data, i) {
         }
         tagExp += ch;
     }
+    throw new Error('Tag not closed');
 }
-function buildAttributesMap(attrStr, options) {
-    if (typeof attrStr === 'string') {
-        attrStr = attrStr.replace(/\r?\n/g, ' ');
-        var attrsRegx = new RegExp('([^\\s=]+)\\s*(=\\s*([\'"])(.*?)\\3)?', 'g');
-        var matches = getAllMatches(attrStr, attrsRegx);
-        var len = matches.length;
-        if (len === 0) {
-            return;
-        }
-        var attrs = {};
-        for (var i = 0; i < len; i++) {
-            var attrName = resolveNameSpace(matches[i][1], options);
-            if (attrName.length) {
-                var namePrefix = '@_';
-                if (matches[i][4] !== undefined) {
-                    if (options.trimValues) {
-                        matches[i][4] = matches[i][4].trim();
-                    }
-                    matches[i][4] = options.attrValueProcessor(matches[i][4], attrName);
-                    attrs[namePrefix + attrName] = parseValue(matches[i][4], options.parseAttributeValue);
-                }
-                else if (options.allowBooleanAttributes) {
-                    attrs[namePrefix + attrName] = true;
-                }
+function buildAttributesMap(attrStr) {
+    attrStr = attrStr.replace(/\r?\n/g, ' ');
+    var attrsRegx = new RegExp('([^\\s=]+)\\s*(=\\s*([\'"])(.*?)\\3)?', 'g');
+    var matches = getAllMatches(attrStr, attrsRegx);
+    var len = matches.length;
+    if (len === 0) {
+        return;
+    }
+    var attrs = {};
+    for (var i = 0; i < len; i++) {
+        var attrName = matches[i][1];
+        if (attrName.length) {
+            var namePrefix = '@_';
+            if (matches[i][4] !== undefined) {
+                matches[i][4] = matches[i][4].trim();
+                attrs[namePrefix + attrName] = matches[i][4];
             }
         }
-        return attrs;
     }
+    return attrs;
 }
 function getAllMatches(string, regex) {
     var matches = [];
@@ -313,19 +238,6 @@ function getAllMatches(string, regex) {
         match = regex.exec(string);
     }
     return matches;
-}
-function resolveNameSpace(tagname, options) {
-    if (options.ignoreNameSpace) {
-        var tags = tagname.split(':');
-        var prefix = tagname.charAt(0) === '/' ? '/' : '';
-        if (tags[0] === 'xmlns') {
-            return '';
-        }
-        if (tags.length === 2) {
-            tagname = prefix + tags[1];
-        }
-    }
-    return tagname;
 }
 
 export { convertToJson, getTraversalObj, parse };
