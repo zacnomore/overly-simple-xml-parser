@@ -1,6 +1,6 @@
 {
   "name": "overly-simple-xml-parser",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "A very simple way to turn xml into js objects",
   "main": "./dist/umd/index.js",
   "module": "./dist/index.js",
